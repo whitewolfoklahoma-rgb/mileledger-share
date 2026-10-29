@@ -1,0 +1,1084 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MileLedger — Work-Trip Mileage Log, IRS Deduction Tracker &amp; Fuel/MPG Calculator</title>
+<style>
+  :root{
+    --ink:#1d2b26; --muted:#5c6f68; --brand:#14694f; --brand2:#0e4d39;
+    --bg:#f3f6f4; --card:#ffffff; --line:#d9e2dc; --accent:#e8f3ee;
+    --warn:#9a3412; --warnbg:#fdf0e7; --bad:#b3261e; --good:#14694f;
+  }
+  html{box-sizing:border-box}
+  body{margin:0;font-family:-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;background:var(--bg);color:var(--ink);font-size:15px;line-height:1.45}
+  header{background:var(--brand2);color:#fff;padding:14px 16px}
+  header .wrap{max-width:1020px;margin:0 auto;display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between}
+  header h1{font-size:20px;margin:0}
+  header .sub{font-size:12.5px;opacity:.85;margin-top:2px}
+  .yearbox{display:flex;align-items:center;gap:8px;font-size:14px}
+  .yearbox select{font-size:15px;padding:6px 8px;border-radius:6px;border:1px solid var(--line)}
+  nav{background:#fff;border-bottom:1px solid var(--line);position:sticky;top:0;z-index:5}
+  nav .wrap{max-width:1020px;margin:0 auto;display:flex;flex-wrap:wrap;gap:2px;padding:6px 8px}
+  nav button{background:none;border:none;padding:9px 12px;font-size:14.5px;cursor:pointer;border-radius:6px;color:var(--ink)}
+  nav button.active{background:var(--accent);color:var(--brand2);font-weight:600}
+  main{max-width:1020px;margin:0 auto;padding:16px 12px 60px}
+  .tab{display:none}
+  .tab.active{display:block}
+  .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px;margin-bottom:14px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px}
+  .card .lbl{font-size:12.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
+  .card .val{font-size:24px;font-weight:700;margin-top:4px}
+  .card .note{font-size:12.5px;color:var(--muted);margin-top:4px}
+  .panel{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:16px;margin-bottom:14px}
+  .panel h2{margin:0 0 10px;font-size:17px}
+  .panel h3{margin:16px 0 8px;font-size:15px}
+  form.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;align-items:end}
+  label{display:block;font-size:13px;color:var(--muted);margin-bottom:4px}
+  input,select,textarea{width:100%;box-sizing:border-box;padding:8px 9px;border:1px solid var(--line);border-radius:6px;font-size:14.5px;background:#fff;color:var(--ink)}
+  textarea{min-height:64px}
+  .check{display:flex;gap:8px;align-items:flex-start;font-size:14px;color:var(--ink)}
+  .check input{width:auto;margin-top:3px}
+  .btn{background:var(--brand);color:#fff;border:none;padding:9px 16px;border-radius:6px;font-size:14.5px;cursor:pointer}
+  .btn:hover{background:var(--brand2)}
+  .btn.ghost{background:#fff;color:var(--brand2);border:1px solid var(--brand)}
+  .btn.danger{background:#fff;color:var(--bad);border:1px solid var(--bad)}
+  .btn.small{padding:4px 9px;font-size:13px;min-height:40px;}
+  table{width:100%;border-collapse:collapse;font-size:14px}
+  th,td{padding:7px 8px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+  th{font-size:12.5px;text-transform:uppercase;letter-spacing:.03em;color:var(--muted)}
+  td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
+  tr.total td{font-weight:700;border-top:2px solid var(--ink);border-bottom:none}
+  .msg{font-size:13.5px;margin-top:8px;min-height:18px}
+  .msg.err{color:var(--bad)}
+  .msg.ok{color:var(--good)}
+  .flag{display:inline-block;font-size:11.5px;padding:1px 7px;border-radius:9px;background:var(--accent);color:var(--brand2)}
+  .flag.due{background:var(--warnbg);color:var(--warn)}
+  .flag.over{background:#fbe9e7;color:var(--bad)}
+  .disclaimer{background:var(--warnbg);border:1px solid #f0c9ae;border-radius:8px;padding:10px 12px;font-size:13.5px;color:#6b3410}
+  .muted{color:var(--muted);font-size:13px}
+  .rowflex{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+  .spacer{flex:1}
+  #printSheet{display:none}
+  @media (max-width:640px){
+    .panel{overflow-x:auto}
+    header h1{font-size:17px}
+    .card .val{font-size:20px}
+    th,td{padding:6px 5px;font-size:13px}
+    nav button{padding:8px 9px;font-size:13.5px}
+  }
+  @media print{
+    header,nav,main{display:none !important}
+    #printSheet{display:block !important;font-size:13px;color:#000}
+    #printSheet h1{font-size:19px;margin:0 0 4px}
+    #printSheet h2{font-size:15px;margin:18px 0 6px}
+    #printSheet table{width:100%;border-collapse:collapse}
+    #printSheet th,#printSheet td{border-bottom:1px solid #bbb;padding:5px 6px;text-align:left}
+    #printSheet td.num,#printSheet th.num{text-align:right}
+  }
+</style>
+</head>
+<body>
+<header>
+  <div class="wrap">
+    <div>
+      <h1>🚗 MileLedger</h1>
+      <div class="sub">Work-trip mileage log, IRS deduction tracker &amp; fuel/MPG calculator — offline, no GPS tracking, ever.</div>
+    </div>
+    <div class="yearbox">
+      <label for="yearSel" style="color:#cfe6db;margin:0">Year</label>
+      <select id="yearSel"></select>
+    </div>
+  </div>
+</header>
+<nav>
+  <div class="wrap" id="tabBar">
+    <button data-tab="dashboard" class="active">Dashboard</button>
+    <button data-tab="trips">Trip Log</button>
+    <button data-tab="deductions">Deductions</button>
+    <button data-tab="fuel">Fuel &amp; MPG</button>
+    <button data-tab="reimb">Reimbursement</button>
+    <button data-tab="settings">Settings &amp; Backup</button>
+    <button data-tab="help">Help</button>
+  </div>
+</nav>
+<main id="app">
+
+  <!-- ============ DASHBOARD ============ -->
+  <section class="tab active" id="tab-dashboard">
+    <div class="cards">
+      <div class="card"><div class="lbl">Deductible miles (<span class="yrLabel"></span>)</div><div class="val" id="dashDedMiles">0</div><div class="note" id="dashDedNote"></div></div>
+      <div class="card"><div class="lbl">Deduction value</div><div class="val" id="dashDeduction">$0.00</div><div class="note">Deductible miles × the standard mileage rate saved for the year</div></div>
+      <div class="card"><div class="lbl">Trips this month</div><div class="val" id="dashMonthTrips">0</div><div class="note" id="dashMonthNote"></div></div>
+      <div class="card"><div class="lbl">Unclaimed reimbursement</div><div class="val" id="dashUnclaimed">$0.00</div><div class="note" id="dashUnclaimedNote"></div></div>
+    </div>
+    <div class="panel">
+      <h2>Your vehicles — current MPG</h2>
+      <table><thead><tr><th>Vehicle</th><th class="num">Latest MPG</th><th class="num">Lifetime MPG</th><th class="num">Fuel cost / mile</th><th class="num">Trips logged</th><th class="num">Total miles</th></tr></thead>
+      <tbody id="dashVehicles"></tbody></table>
+      <p class="muted">MPG uses the full-tank method: miles since the last fill-up ÷ gallons at this fill-up. The first fill-up for a vehicle is the baseline and shows no MPG. Log fill-ups in the Fuel &amp; MPG tab.</p>
+    </div>
+    <div class="panel">
+      <h2>Why a manual log?</h2>
+      <p style="margin:6px 0">The IRS does not ask for a GPS trail. It asks for a record with <b>the date, the destination, the business purpose, and the miles</b> — which is exactly what MileLedger's trip log captures, on paper-ready reports. The subscription apps track your location around the clock (and drain your battery doing it) to build the same four facts. Here you type them in, your data never leaves this device, and there is no monthly bill.</p>
+      <p class="muted" style="margin:6px 0">Sample data (a realtor with two vehicles) is pre-loaded so you can see everything working. One button removes only the samples — your real entries are never touched.</p>
+      <div class="rowflex">
+        <button class="btn ghost" id="btnClearDemoDash" type="button">Clear sample data</button>
+        <span class="msg" id="dashMsg"></span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ TRIP LOG ============ -->
+  <section class="tab" id="tab-trips">
+    <div class="panel">
+      <h2 id="tripFormTitle">Add a trip</h2>
+      <form class="grid" id="tripForm">
+        <div><label for="tripDate">Date</label><input type="date" id="tripDate"></div>
+        <div><label for="tripVehicle">Vehicle</label><select id="tripVehicle"></select></div>
+        <div><label for="tripType">Trip type</label>
+          <select id="tripType">
+            <option value="business">Business</option>
+            <option value="commute">Commute</option>
+            <option value="personal">Personal</option>
+          </select></div>
+        <div><label for="tripFrom">From</label><input type="text" id="tripFrom" placeholder="e.g. Home office"></div>
+        <div><label for="tripTo">To (destination)</label><input type="text" id="tripTo" placeholder="e.g. 123 Elm St — showing"></div>
+        <div><label for="tripPurpose">Business purpose (required)</label><input type="text" id="tripPurpose" placeholder="e.g. Buyer showing with the Johnsons"></div>
+        <div><label for="tripTag">Client / project (optional)</label><input type="text" id="tripTag" placeholder="e.g. Johnson listing"></div>
+        <div><label for="tripMethod">Miles from</label>
+          <select id="tripMethod">
+            <option value="odometer">Odometer start / end</option>
+            <option value="direct">Enter miles directly</option>
+          </select></div>
+        <div class="odoField"><label for="odoStart">Odometer start</label><input inputmode="decimal" type="number" id="odoStart" step="0.1" min="0" placeholder="0"></div>
+        <div class="odoField"><label for="odoEnd">Odometer end</label><input inputmode="decimal" type="number" id="odoEnd" step="0.1" min="0" placeholder="0"></div>
+        <div class="directField" style="display:none"><label for="milesDirect">Miles (one way)</label><input inputmode="decimal" type="number" id="milesDirect" step="0.1" min="0" placeholder="0"></div>
+        <div><label class="check"><input type="checkbox" id="tripRound"> Round trip — double the miles</label></div>
+        <div><label class="check"><input type="checkbox" id="tripOverride"> Commute override — count this commute as deductible / claimable (see Help; the override stays visible on the trip)</label></div>
+        <div><label class="check"><input type="checkbox" id="tripClaimed"> Reimbursement already claimed</label></div>
+        <div><button class="btn" id="tripAdd" type="submit">Add trip</button> <button class="btn ghost" id="tripCancelEdit" type="button" style="display:none">Cancel edit</button></div>
+      </form>
+      <div class="msg" id="tripMsg"></div>
+      <p class="muted">Purpose is required because it is the field the IRS actually asks about. A normal home-to-work <b>commute is not deductible</b> — MileLedger excludes commutes unless you deliberately tick the override (for example a temporary work location), and the trip stays flagged as an override everywhere it appears.</p>
+    </div>
+    <div class="panel">
+      <h2>Trips — <span class="yrLabel"></span></h2>
+      <table><thead><tr><th>Date</th><th>Vehicle</th><th>Route</th><th>Purpose</th><th>Type</th><th class="num">Miles</th><th class="num">Deduction</th><th class="num">Reimb.</th><th></th></tr></thead>
+      <tbody id="tripList"></tbody>
+      <tfoot><tr class="total"><td colspan="5">Totals (deductible miles drive the deduction)</td><td class="num" id="tripTotalMiles">0</td><td class="num" id="tripTotalDed">$0.00</td><td class="num" id="tripTotalReimb">$0.00</td><td></td></tr></tfoot></table>
+    </div>
+  </section>
+
+  <!-- ============ DEDUCTIONS ============ -->
+  <section class="tab" id="tab-deductions">
+    <div class="disclaimer"><b>Planning &amp; record-keeping aid — not tax advice.</b> The deduction below uses the standard mileage rate saved for each year in Settings. Those rates ship as <b>editable defaults</b> — verify yours against the current IRS notice for the tax year before filing.</div>
+    <div class="cards" style="margin-top:14px">
+      <div class="card"><div class="lbl">Standard rate (<span class="yrLabel"></span>)</div><div class="val" id="dedRate">$0.00</div><div class="note">Per deductible mile, from Settings</div></div>
+      <div class="card"><div class="lbl">Deductible miles</div><div class="val" id="dedMiles">0</div><div class="note">Business trips + overridden commutes</div></div>
+      <div class="card"><div class="lbl">Deduction</div><div class="val" id="dedValue">$0.00</div><div class="note">What the standard-mileage method gives you</div></div>
+      <div class="card"><div class="lbl">Non-deductible miles</div><div class="val" id="dedNonMiles">0</div><div class="note">Personal trips + regular commutes — logged, just not deducted</div></div>
+    </div>
+    <div class="panel">
+      <h2>By month — <span class="yrLabel"></span></h2>
+      <table><thead><tr><th>Month</th><th class="num">Trips</th><th class="num">Total miles</th><th class="num">Deductible miles</th><th class="num">Deduction</th></tr></thead>
+      <tbody id="dedMonths"></tbody></table>
+      <h3>By quarter</h3>
+      <table><thead><tr><th>Quarter</th><th class="num">Deductible miles</th><th class="num">Deduction</th></tr></thead>
+      <tbody id="dedQuarters"></tbody></table>
+    </div>
+    <div class="panel">
+      <h2>IRS-style mileage log report</h2>
+      <p class="muted">One printable page per year: date, destination, business purpose, miles, and deduction for every deductible trip — the record a tax preparer (or an auditor) wants to see. Keep it with the year's return.</p>
+      <div class="rowflex">
+        <button class="btn" id="btnPrintDed" type="button">Print mileage log (<span class="yrLabel"></span>)</button>
+        <span class="msg" id="dedMsg"></span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ FUEL & MPG ============ -->
+  <section class="tab" id="tab-fuel">
+    <div class="panel">
+      <h2 id="fuelFormTitle">Add a fill-up</h2>
+      <form class="grid" id="fuelForm">
+        <div><label for="fuelDate">Date</label><input type="date" id="fuelDate"></div>
+        <div><label for="fuelVehicle">Vehicle</label><select id="fuelVehicle"></select></div>
+        <div><label for="fuelOdo">Odometer</label><input inputmode="decimal" type="number" id="fuelOdo" step="0.1" min="0" placeholder="0"></div>
+        <div><label for="fuelGallons">Gallons</label><input inputmode="decimal" type="number" id="fuelGallons" step="0.001" min="0" placeholder="0"></div>
+        <div><label for="fuelPrice">Price per gallon ($)</label><input inputmode="decimal" type="number" id="fuelPrice" step="0.001" min="0" placeholder="0"></div>
+        <div><label>Total</label><div id="fuelTotalPreview" style="padding:8px 0;font-weight:700">$0.00</div></div>
+        <div><button class="btn" id="fuelAdd" type="submit">Add fill-up</button> <button class="btn ghost" id="fuelCancelEdit" type="button" style="display:none">Cancel edit</button></div>
+      </form>
+      <div class="msg" id="fuelMsg"></div>
+      <p class="muted">Fill the tank each time and the math is honest: MPG for a fill-up = miles since the previous fill-up ÷ gallons this fill-up. The first fill-up is the baseline — it starts the clock and shows no MPG.</p>
+    </div>
+    <div class="panel">
+      <h2>Fill-ups — <span class="yrLabel"></span></h2>
+      <table><thead><tr><th>Date</th><th>Vehicle</th><th class="num">Odometer</th><th class="num">Gallons</th><th class="num">$/gal</th><th class="num">Total</th><th class="num">MPG</th><th></th></tr></thead>
+      <tbody id="fuelList"></tbody></table>
+      <h3>Fuel summary by vehicle — <span class="yrLabel"></span></h3>
+      <table><thead><tr><th>Vehicle</th><th class="num">Miles (between fill-ups)</th><th class="num">Gallons</th><th class="num">MPG</th><th class="num">Fuel spend</th><th class="num">Fuel cost / mile</th></tr></thead>
+      <tbody id="fuelStats"></tbody></table>
+    </div>
+    <div class="panel">
+      <h2>What did that work trip cost in gas?</h2>
+      <p class="muted">The question every driver actually asks. Trip miles ÷ your MPG × today's gas price.</p>
+      <form class="grid" id="estForm">
+        <div><label for="estMiles">Trip miles</label><input inputmode="decimal" type="number" id="estMiles" step="0.1" min="0" placeholder="0"></div>
+        <div><label for="estVehicle">Vehicle (fills in its MPG)</label><select id="estVehicle"></select></div>
+        <div><label for="estMpg">MPG</label><input inputmode="decimal" type="number" id="estMpg" step="0.1" min="0" placeholder="0"></div>
+        <div><label for="estGasPrice">Gas price ($/gal)</label><input inputmode="decimal" type="number" id="estGasPrice" step="0.001" min="0" placeholder="0"></div>
+        <div><button class="btn" id="estCalc" type="submit">Calculate</button></div>
+      </form>
+      <div class="msg" id="estMsg"></div>
+      <div id="estResult" style="font-size:18px;font-weight:700;margin-top:6px"></div>
+    </div>
+  </section>
+
+  <!-- ============ REIMBURSEMENT ============ -->
+  <section class="tab" id="tab-reimb">
+    <div class="cards">
+      <div class="card"><div class="lbl">Employer rate</div><div class="val" id="reimbRate">$0.00</div><div class="note">Per mile, from Settings — can differ from the IRS rate</div></div>
+      <div class="card"><div class="lbl">Claimable miles (<span class="yrLabel"></span>)</div><div class="val" id="reimbMiles">0</div><div class="note">Business trips + overridden commutes</div></div>
+      <div class="card"><div class="lbl">Already claimed</div><div class="val" id="reimbClaimed">$0.00</div><div class="note">Marked claimed in the log</div></div>
+      <div class="card"><div class="lbl">Still unclaimed</div><div class="val" id="reimbUnclaimed">$0.00</div><div class="note">Money your employer may owe you</div></div>
+    </div>
+    <div class="panel">
+      <h2>Claimable trips — <span class="yrLabel"></span></h2>
+      <table><thead><tr><th>Date</th><th>Vehicle</th><th>Route</th><th>Purpose</th><th class="num">Miles</th><th class="num">Claimable</th><th>Status</th><th></th></tr></thead>
+      <tbody id="reimbList"></tbody></table>
+      <div class="rowflex" style="margin-top:12px">
+        <button class="btn" id="btnPrintClaim" type="button">Print reimbursement claim sheet (unclaimed)</button>
+        <button class="btn ghost" id="btnMarkClaimed" type="button">Mark all unclaimed as claimed</button>
+        <span class="msg" id="reimbMsg"></span>
+      </div>
+      <p class="muted">The claim sheet prints your name, your employer, the period, and every unclaimed trip with its amount — ready to hand to payroll. Note: if your employer reimburses you under an accountable plan, that reimbursement is generally not also a tax deduction for the same miles — MileLedger tracks both views; your tax professional sorts out your situation. See Help.</p>
+    </div>
+  </section>
+
+  <!-- ============ SETTINGS & BACKUP ============ -->
+  <section class="tab" id="tab-settings">
+    <div class="panel">
+      <h2>Driver &amp; rates</h2>
+      <form class="grid" id="setForm">
+        <div><label for="setDriver">Driver / employee name</label><input type="text" id="setDriver" placeholder="Your name"></div>
+        <div><label for="setEmployer">Employer (for claim sheets)</label><input type="text" id="setEmployer" placeholder="Employer name"></div>
+        <div><label for="setReimbRate">Employer reimbursement rate ($/mile)</label><input inputmode="decimal" type="number" id="setReimbRate" step="0.001" min="0"></div>
+        <div><label for="setGasPrice">Default gas price ($/gal, for the estimator)</label><input inputmode="decimal" type="number" id="setGasPrice" step="0.001" min="0"></div>
+        <div><label for="setMilFallback">IRS mileage rate $/mile — years not listed</label><input inputmode="decimal" type="number" id="setMilFallback" step="0.001" min="0"></div>
+        <div><button class="btn" id="setSave" type="submit">Save settings</button></div>
+      </form>
+      <div class="msg" id="setMsg"></div>
+      <h3>IRS standard mileage rates ($/mile) — editable defaults</h3>
+      <p class="muted">These ship as <b>editable defaults</b> based on the IRS standard mileage rates in effect when this app was made. Rates change — check the current IRS notice for your tax year and fix the number here if it differs. Every trip's deduction uses the rate saved for the trip's year.</p>
+      <div id="milRates"></div>
+    </div>
+    <div class="panel">
+      <h2>Vehicles</h2>
+      <form class="grid" id="vehForm">
+        <div><label for="vehName">Vehicle name</label><input type="text" id="vehName" placeholder="e.g. 2022 Honda CR-V"></div>
+        <div><label for="vehNotes">Notes (optional)</label><input type="text" id="vehNotes" placeholder="e.g. AWD, work car"></div>
+        <div><button class="btn" id="vehAdd" type="submit">Add vehicle</button> <button class="btn ghost" id="vehCancelEdit" type="button" style="display:none">Cancel edit</button></div>
+      </form>
+      <div class="msg" id="vehMsg"></div>
+      <table><thead><tr><th>Vehicle</th><th>Notes</th><th class="num">Trips</th><th class="num">Miles</th><th></th></tr></thead>
+      <tbody id="vehList"></tbody></table>
+    </div>
+    <div class="panel">
+      <h2>Backup &amp; restore</h2>
+      <p class="muted">Your data lives only in this browser on this device. Export a backup file regularly — it is the only copy. Importing replaces everything currently in the app with the backup's contents.</p>
+      <div class="rowflex">
+        <button class="btn" id="btnExport" type="button">Export backup (JSON)</button>
+        <label class="btn ghost" style="cursor:pointer">Import from file<input type="file" id="importFile" accept=".json,application/json" style="display:none"></label>
+      </div>
+      <label for="importText" style="margin-top:12px">…or paste backup JSON here</label>
+      <textarea id="importText" placeholder="Paste the contents of a MileLedger backup file"></textarea>
+      <div class="rowflex" style="margin-top:8px">
+        <button class="btn ghost" id="btnImportText" type="button">Import pasted backup</button>
+        <span class="msg" id="importMsg"></span>
+      </div>
+    </div>
+    <div class="panel">
+      <h2>Sample data &amp; erase</h2>
+      <div class="rowflex">
+        <button class="btn ghost" id="btnClearDemo" type="button">Clear sample data only</button>
+        <button class="btn danger" id="btnEraseAll" type="button">Erase EVERYTHING</button>
+        <span class="msg" id="dataMsg"></span>
+      </div>
+      <p class="muted">"Erase EVERYTHING" deletes all trips, fill-ups, vehicles, and settings from this browser and starts empty. It cannot be undone — export a backup first if there is anything you want.</p>
+    </div>
+  <div id="legalSection"></div>
+</section>
+
+  <!-- ============ HELP ============ -->
+  <section class="tab" id="tab-help">
+    <div class="panel">
+      <h2>How MileLedger works</h2>
+      <h3>The idea</h3>
+      <p>One file, no account, no subscription, and <b>no GPS tracking — ever</b>. You log each work trip with the four facts the IRS asks for, log each fill-up, and MileLedger turns that into a deduction, an MPG history, a per-trip gas cost, and a reimbursement claim. Manual entry is the feature: nothing watches where you drive.</p>
+      <h3>What the IRS wants in a mileage log</h3>
+      <p>For the standard-mileage deduction, the record that holds up is a contemporaneous log showing, for each trip: <b>the date, the destination, the business purpose, and the miles driven</b> — plus the total miles the vehicle was driven in the year if you are asked for it. MileLedger's Trip Log captures exactly those fields (purpose is a required field on purpose), and the Deductions tab prints them as a clean year log for your preparer or your files. This is a summary of the record-keeping idea, not tax advice — the IRS publication for your situation (commonly Pub. 463 for travel and vehicle expenses) is the authority.</p>
+      <h3>Commuting</h3>
+      <p>Driving between home and a regular workplace is commuting, and commuting miles are generally <b>not</b> deductible. MileLedger logs commutes (they matter for your true cost of working) but excludes them from the deduction — unless you tick the per-trip override for a case you believe qualifies (a temporary work location is the classic example). The override is deliberate, per-trip, and stays visible on the trip and the printed log. When in doubt, ask a tax professional before overriding.</p>
+      <h3>The formulas</h3>
+      <p><b>Deduction</b> = deductible miles × the standard mileage rate saved for the trip's year (Settings). Deductible miles = Business trips + commutes with the override on. Personal trips never count.</p>
+      <p><b>MPG (full-tank method)</b> = miles driven since the previous fill-up ÷ gallons bought at this fill-up. Fill the tank every time or the number wobbles. <b>Fuel cost per mile</b> = fuel spend over measured intervals ÷ miles in those intervals.</p>
+      <p><b>Trip gas cost</b> = trip miles ÷ MPG × gas price per gallon. It is the fuel-only cost of a trip — the standard mileage rate exists precisely because a car costs more than gas (tires, oil, wear, depreciation), which is why the deduction is usually larger than the gas cost.</p>
+      <p><b>Reimbursement</b> = claimable miles × your employer's rate (Settings). Claimable miles mirror the deduction's work-trip definition (Business + overridden commutes). Reimbursement and deduction are two views of the same miles: if an employer reimburses you under an accountable plan, those miles generally are not also deductible by you. MileLedger shows both totals so you and your preparer can apply the rule — it does not decide it for you.</p>
+      <h3>Your data</h3>
+      <p>Everything is stored in this browser's local storage on this device only. Clearing your browser's site data erases it — export backups from Settings &amp; Backup and keep the file somewhere safe. A backup from this app can be re-imported into any copy of MileLedger.</p>
+      <h3>Defaults to verify</h3>
+      <p>The standard mileage rates and the fallback rate are planning defaults, clearly labeled and editable in Settings. The IRS sets the standard mileage rate by notice; verify yours before filing. The employer reimbursement rate and the gas price are your own inputs.</p>
+    </div>
+  </section>
+</main>
+<div id="printSheet"></div>
+
+<script>
+"use strict";
+/* ================= MileLedger ================= */
+var KEY = "mileledger.v1";
+var MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+var TYPES = { business:"Business", commute:"Commute", personal:"Personal" };
+
+var _uid = 0;
+function uid(){ _uid++; return "r"+Date.now().toString(36)+_uid.toString(36)+Math.floor(Math.random()*1e6).toString(36); }
+function esc(s){ return String(s==null?"":s).replace(/[&<>"']/g, function(ch){ return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[ch]; }); }
+function round2(x){ return Math.round((Number(x)||0)*100)/100; }
+function round1(x){ return Math.round((Number(x)||0)*10)/10; }
+function fmt(x){ var v = round2(x); var neg = v<0; var s = Math.abs(v).toLocaleString("en-US",{minimumFractionDigits:2, maximumFractionDigits:2}); return (neg?"-$":"$")+s; }
+function fmtMi(x){ var v = round1(x); return v.toLocaleString("en-US",{minimumFractionDigits:1, maximumFractionDigits:1}); }
+function num(v){ var n = parseFloat(v); if(!isFinite(n)) return 0; if(n>999999999) n=999999999; if(n<-999999999) n=-999999999; return n; }
+function amt(v){ var n = num(v); return n<0?0:n; }
+function validDate(s){
+  if(typeof s!=="string") return false;
+  var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s); if(!m) return false;
+  var y=+m[1], mo=+m[2], d=+m[3];
+  if(mo<1||mo>12||d<1||d>31) return false;
+  var dt = new Date(Date.UTC(y, mo-1, d));
+  return dt.getUTCFullYear()===y && dt.getUTCMonth()===mo-1 && dt.getUTCDate()===d;
+}
+function yearOf(s){ return validDate(s) ? +s.slice(0,4) : null; }
+function monthOf(s){ return validDate(s) ? +s.slice(5,7) : null; }
+function todayStr(){ var d=new Date(); function p(n){return (n<10?"0":"")+n;} return d.getFullYear()+"-"+p(d.getMonth()+1)+"-"+p(d.getDate()); }
+
+function defaultSettings(){
+  return {
+    driverName:"", employer:"",
+    reimbursementRate:0.70, gasPrice:3.20,
+    mileageRates:{"2024":0.67, "2025":0.70, "2026":0.725},
+    mileageFallback:0.70
+  };
+}
+function blankState(demoCleared){
+  return { app:"mileledger", settings: defaultSettings(), vehicles:[], trips:[], fillups:[], meta:{seeded:true, demoCleared:!!demoCleared} };
+}
+function seedDemo(){
+  var st = blankState(false);
+  var Y = new Date().getFullYear();
+  function D(mo, d){ function p(n){return (n<10?"0":"")+n;} return Y+"-"+p(mo)+"-"+p(d); }
+  st.settings.driverName = "Sample — Riley Realtor (demo)";
+  st.settings.employer = "Sample — Grand Lake Realty (demo)";
+  var v1 = {id:"veh-demo-1", name:"2022 Honda CR-V", notes:"Main showing car", demo:true};
+  var v2 = {id:"veh-demo-2", name:"2019 Ford F-150", notes:"Signs & lockboxes", demo:true};
+  st.vehicles = [v1, v2];
+  function T(date, veh, from, to, purpose, type, method, miles, o1, o2, round, override, claimed, tag){
+    st.trips.push({id:uid(), date:date, vehicleId:veh, from:from, to:to, purpose:purpose, type:type, entryMethod:method, miles:miles, odoStart:o1, odoEnd:o2, roundTrip:!!round, commuteOverride:!!override, claimed:!!claimed, tag:tag||"", demo:true});
+  }
+  T(D(1,12), v1.id, "Home office", "123 Elm St, Maplewood", "Buyer showing — Johnson family", "business", "direct", 24.6, 0, 0, false, false, false, "Johnson buyers");
+  T(D(2,3), v1.id, "Home office", "Listing appointment, Jay", "Listing presentation — signed", "business", "odometer", 86, 45400, 45486, false, false, true, "Seller — Maple St");
+  T(D(3,5), v1.id, "Home", "Brokerage office", "Regular commute to office", "commute", "direct", 18, 0, 0, false, false, false, "");
+  T(D(3,6), v1.id, "Home", "Family visit, Vinita", "Personal errand", "personal", "direct", 12, 0, 0, false, false, false, "");
+  T(D(4,10), v1.id, "Brokerage office", "456 Lakeview Dr, Afton", "Buyer showing — lake house", "business", "direct", 21, 0, 0, true, false, false, "Lake buyers");
+  T(D(5,15), v2.id, "Home", "789 County Rd, Maplewood", "Property photos & sign install", "business", "direct", 64, 0, 0, false, false, false, "New listing");
+  T(todayStr(), v1.id, "Home office", "Client showing across town", "Buyer showing — today", "business", "direct", 16.5, 0, 0, false, false, false, "Johnson buyers");
+  function F(date, veh, odo, gal, price){
+    st.fillups.push({id:uid(), date:date, vehicleId:veh, odometer:odo, gallons:gal, pricePerGallon:price, total:round2(gal*price), demo:true});
+  }
+  F(D(1,2), v1.id, 45000, 10, 3.10);
+  F(D(1,20), v1.id, 45320, 10.5, 3.20);
+  F(D(2,10), v1.id, 45610, 9.8, 3.05);
+  F(D(3,1), v2.id, 78000, 20, 3.15);
+  F(D(3,18), v2.id, 78360, 24, 3.25);
+  return st;
+}
+
+var state = null;
+function save(){ try{ localStorage.setItem(KEY, JSON.stringify(state)); }catch(e){} }
+function load(){
+  var raw = null;
+  try{ raw = localStorage.getItem(KEY); }catch(e){}
+  if(!raw){ state = seedDemo(); save(); return; }
+  try{
+    var parsed = JSON.parse(raw);
+    state = sanitizeState(parsed);
+    if(!state){ throw new Error("bad shape"); }
+  }catch(e){
+    try{ localStorage.setItem(KEY+".corrupt", raw); }catch(e2){}
+    state = seedDemo(); save();
+  }
+}
+function sanitizeState(p){
+  if(!p || typeof p!=="object" || Array.isArray(p)) return null;
+  var st = blankState(false);
+  var s = (p.settings && typeof p.settings==="object") ? p.settings : {};
+  st.settings.driverName = String(s.driverName||"").slice(0,120);
+  st.settings.employer = String(s.employer||"").slice(0,120);
+  st.settings.reimbursementRate = Math.max(0, num(s.reimbursementRate==null?0.70:s.reimbursementRate));
+  st.settings.gasPrice = Math.max(0, num(s.gasPrice==null?3.20:s.gasPrice));
+  st.settings.mileageFallback = Math.max(0, num(s.mileageFallback==null?0.70:s.mileageFallback));
+  st.settings.mileageRates = {};
+  var mr = (s.mileageRates && typeof s.mileageRates==="object") ? s.mileageRates : {};
+  Object.keys(mr).forEach(function(k){ if(/^\d{4}$/.test(k)){ var v = num(mr[k]); if(v>=0) st.settings.mileageRates[k]=v; } });
+  if(Object.keys(st.settings.mileageRates).length===0) st.settings.mileageRates = defaultSettings().mileageRates;
+  st.vehicles = sanitizeVehicles(p.vehicles);
+  var vids = {}; st.vehicles.forEach(function(v){ vids[v.id]=true; });
+  st.trips = sanitizeTrips(p.trips, vids);
+  st.fillups = sanitizeFillups(p.fillups, vids);
+  st.meta = { seeded:true, demoCleared: !!(p.meta && p.meta.demoCleared) };
+  st.legal = sanitizeLegal(p.legal);
+  return st;
+}
+function sanitizeVehicles(list){
+  if(!Array.isArray(list)) return [];
+  var out=[], seen={};
+  list.forEach(function(r){
+    if(!r || typeof r!=="object") return;
+    var id = String(r.id||uid());
+    if(seen[id]) id = uid();
+    seen[id]=true;
+    var name = String(r.name||"").slice(0,120);
+    if(!name) return;
+    out.push({ id:id, name:name, notes:String(r.notes||"").slice(0,200), demo:!!r.demo });
+  });
+  return out;
+}
+function sanitizeTrips(list, vids){
+  if(!Array.isArray(list)) return [];
+  var out=[];
+  list.forEach(function(r){
+    if(!r || !validDate(r.date)) return;
+    if(!vids[String(r.vehicleId||"")]) return;
+    var type = TYPES[r.type] ? r.type : "business";
+    var method = r.entryMethod==="direct" ? "direct" : "odometer";
+    var miles = round1(amt(r.miles));
+    if(!(miles>0)) return;
+    out.push({ id:String(r.id||uid()), date:r.date, vehicleId:String(r.vehicleId), from:String(r.from||"").slice(0,160), to:String(r.to||"").slice(0,160), purpose:String(r.purpose||"").slice(0,300), type:type, entryMethod:method, miles:miles, odoStart:amt(r.odoStart), odoEnd:amt(r.odoEnd), roundTrip:!!r.roundTrip, commuteOverride:!!r.commuteOverride, claimed:!!r.claimed, tag:String(r.tag||"").slice(0,120), demo:!!r.demo });
+  });
+  return out;
+}
+function sanitizeFillups(list, vids){
+  if(!Array.isArray(list)) return [];
+  var out=[];
+  list.forEach(function(r){
+    if(!r || !validDate(r.date)) return;
+    if(!vids[String(r.vehicleId||"")]) return;
+    var gal = amt(r.gallons); if(!(gal>0)) return;
+    var price = amt(r.pricePerGallon);
+    out.push({ id:String(r.id||uid()), date:r.date, vehicleId:String(r.vehicleId), odometer:amt(r.odometer), gallons:gal, pricePerGallon:price, total:round2(gal*price), demo:!!r.demo });
+  });
+  return out;
+}
+
+/* ---------- computations ---------- */
+function rateForYear(y){
+  var r = state.settings.mileageRates[String(y)];
+  if(typeof r==="number" && isFinite(r)) return r;
+  return state.settings.mileageFallback;
+}
+function vehicleName(id){
+  for(var i=0;i<state.vehicles.length;i++){ if(state.vehicles[i].id===id) return state.vehicles[i].name; }
+  return "Unknown vehicle";
+}
+function isDeductible(t){ return t.type==="business" || (t.type==="commute" && t.commuteOverride); }
+function tripDeduction(t){ return isDeductible(t) ? round2(t.miles * rateForYear(yearOf(t.date))) : 0; }
+function tripClaimable(t){ return isDeductible(t) ? round2(t.miles * state.settings.reimbursementRate) : 0; }
+function totalsForYear(year){
+  var t = { trips:0, totalMiles:0, dedMiles:0, deduction:0, nonMiles:0, claimMiles:0, claimable:0, claimedAmt:0, unclaimedAmt:0,
+    byMonth:[], byQuarter:[{dedMiles:0,deduction:0},{dedMiles:0,deduction:0},{dedMiles:0,deduction:0},{dedMiles:0,deduction:0}] };
+  for(var m=0;m<12;m++) t.byMonth.push({trips:0, miles:0, dedMiles:0, deduction:0});
+  state.trips.forEach(function(r){
+    if(yearOf(r.date)!==year) return;
+    t.trips++;
+    t.totalMiles = round1(t.totalMiles + r.miles);
+    var mo = t.byMonth[monthOf(r.date)-1];
+    mo.trips++; mo.miles = round1(mo.miles + r.miles);
+    if(isDeductible(r)){
+      var d = tripDeduction(r);
+      t.dedMiles = round1(t.dedMiles + r.miles);
+      t.deduction = round2(t.deduction + d);
+      mo.dedMiles = round1(mo.dedMiles + r.miles);
+      mo.deduction = round2(mo.deduction + d);
+      var q = t.byQuarter[Math.floor((monthOf(r.date)-1)/3)];
+      q.dedMiles = round1(q.dedMiles + r.miles);
+      q.deduction = round2(q.deduction + d);
+      var c = tripClaimable(r);
+      t.claimMiles = round1(t.claimMiles + r.miles);
+      t.claimable = round2(t.claimable + c);
+      if(r.claimed) t.claimedAmt = round2(t.claimedAmt + c); else t.unclaimedAmt = round2(t.unclaimedAmt + c);
+    } else {
+      t.nonMiles = round1(t.nonMiles + r.miles);
+    }
+  });
+  return t;
+}
+function fuelIntervals(vehicleId){
+  var list = state.fillups.filter(function(f){ return f.vehicleId===vehicleId; }).slice().sort(function(a,b){ return a.odometer - b.odometer || (a.date<b.date?-1:1); });
+  var out = [];
+  for(var i=1;i<list.length;i++){
+    var miles = round1(list[i].odometer - list[i-1].odometer);
+    if(!(miles>0)) continue;
+    out.push({ fillupId:list[i].id, date:list[i].date, miles:miles, gallons:list[i].gallons, total:list[i].total, mpg: list[i].gallons>0 ? miles/list[i].gallons : 0, costPerMile: miles>0 ? list[i].total/miles : 0 });
+  }
+  return out;
+}
+function fuelStats(vehicleId, year){
+  var iv = fuelIntervals(vehicleId);
+  if(year){ iv = iv.filter(function(x){ return yearOf(x.date)===year; }); }
+  var miles=0, gallons=0, cost=0;
+  iv.forEach(function(x){ miles=round1(miles+x.miles); gallons=round2(gallons+x.gallons); cost=round2(cost+x.total); });
+  return { intervals:iv, miles:miles, gallons:gallons, cost:cost, mpg: gallons>0 ? miles/gallons : 0, costPerMile: miles>0 ? cost/miles : 0, latest: iv.length ? iv[iv.length-1] : null };
+}
+function estimatorCost(miles, mpg, gasPrice){
+  miles = amt(miles); mpg = amt(mpg); gasPrice = amt(gasPrice);
+  if(!(miles>0) || !(mpg>0)) return 0;
+  return round2(miles / mpg * gasPrice);
+}
+function sortByDate(list){ return list.slice().sort(function(a,b){ return a.date<b.date?-1:(a.date>b.date?1:0); }); }
+
+/* ---------- UI ---------- */
+function $(id){ return document.getElementById(id); }
+var uiYear = new Date().getFullYear();
+function yearsPresent(){
+  var set = {};
+  set[new Date().getFullYear()] = true; set[uiYear] = true;
+  state.trips.concat(state.fillups).forEach(function(r){ var y=yearOf(r.date); if(y) set[y]=true; });
+  return Object.keys(set).map(Number).sort(function(a,b){return a-b;});
+}
+function fillYearSel(){
+  var sel = $("yearSel"); sel.innerHTML = "";
+  yearsPresent().forEach(function(y){
+    var o = document.createElement("option"); o.value=y; o.textContent=y; if(y===uiYear) o.selected=true; sel.appendChild(o);
+  });
+  Array.prototype.forEach.call(document.querySelectorAll(".yrLabel"), function(el){ el.textContent = uiYear; });
+}
+function fillVehicleSelect(sel, keepValue){
+  var cur = keepValue!=null ? keepValue : sel.value;
+  sel.innerHTML = "";
+  state.vehicles.forEach(function(v){
+    var o = document.createElement("option"); o.value=v.id; o.textContent=v.name; sel.appendChild(o);
+  });
+  if(!state.vehicles.length){
+    var o2 = document.createElement("option"); o2.value=""; o2.textContent="— add a vehicle in Settings first —"; sel.appendChild(o2);
+  } else if(cur && vehicleName(cur)!=="Unknown vehicle"){ sel.value = cur; }
+}
+function showTab(name){
+  Array.prototype.forEach.call(document.querySelectorAll("#tabBar button"), function(b){ b.classList.toggle("active", b.getAttribute("data-tab")===name); });
+  Array.prototype.forEach.call(document.querySelectorAll(".tab"), function(s){ s.classList.toggle("active", s.id==="tab-"+name); });
+}
+function render(){
+  fillYearSel();
+  var t = totalsForYear(uiYear);
+  /* dashboard */
+  $("dashDedMiles").textContent = fmtMi(t.dedMiles);
+  $("dashDedNote").textContent = "at " + fmt(rateForYear(uiYear)) + "/mi standard rate";
+  $("dashDeduction").textContent = fmt(t.deduction);
+  var now = new Date();
+  var monthPrefix = uiYear+"-"+((now.getMonth()+1)<10?"0":"")+(now.getMonth()+1);
+  var monthTrips = state.trips.filter(function(r){ return r.date.indexOf(monthPrefix)===0; }).length;
+  $("dashMonthTrips").textContent = monthTrips;
+  $("dashMonthNote").textContent = MONTHS[now.getMonth()] + " " + uiYear;
+  $("dashUnclaimed").textContent = fmt(t.unclaimedAmt);
+  $("dashUnclaimedNote").textContent = fmtMi(t.claimMiles) + " claimable miles in " + uiYear;
+  $("dashVehicles").innerHTML = state.vehicles.length ? state.vehicles.map(function(v){
+    var all = fuelStats(v.id, null);
+    var vt = state.trips.filter(function(r){ return r.vehicleId===v.id; });
+    var vm = 0; vt.forEach(function(r){ vm = round1(vm + r.miles); });
+    return "<tr><td>"+esc(v.name)+(v.demo?' <span class="flag">sample</span>':"")+"</td><td class=\"num\">"+(all.latest? all.latest.mpg.toFixed(1) : "—")+"</td><td class=\"num\">"+(all.mpg? all.mpg.toFixed(1) : "—")+"</td><td class=\"num\">"+(all.costPerMile? fmt(all.costPerMile) : "—")+"</td><td class=\"num\">"+vt.length+"</td><td class=\"num\">"+fmtMi(vm)+"</td></tr>";
+  }).join("") : '<tr><td colspan="6" class="muted">No vehicles yet — add one in Settings &amp; Backup.</td></tr>';
+  renderTrips(t);
+  renderDeductions(t);
+  renderFuel();
+  renderReimb(t);
+  renderSettings();
+}
+function typeLabel(t){
+  var lbl = TYPES[t.type];
+  if(t.type==="commute" && t.commuteOverride) lbl += ' <span class="flag due">override</span>';
+  if(t.demo) lbl += ' <span class="flag">sample</span>';
+  return lbl;
+}
+function renderTrips(t){
+  var list = sortByDate(state.trips.filter(function(r){ return yearOf(r.date)===uiYear; }));
+  $("tripList").innerHTML = list.length ? list.map(function(r){
+    return "<tr><td>"+esc(r.date)+"</td><td>"+esc(vehicleName(r.vehicleId))+"</td><td>"+esc(r.from)+" → "+esc(r.to)+(r.roundTrip?' <span class="flag">round trip</span>':"")+"</td><td>"+esc(r.purpose)+(r.tag?'<br><span class="muted">'+esc(r.tag)+"</span>":"")+"</td><td>"+typeLabel(r)+"</td><td class=\"num\">"+fmtMi(r.miles)+"</td><td class=\"num\">"+fmt(tripDeduction(r))+"</td><td class=\"num\">"+fmt(tripClaimable(r))+"</td><td><button class=\"btn small ghost\" data-edit-trip=\""+esc(r.id)+"\" type=\"button\">Edit</button> <button class=\"btn small ghost\" data-del-trip=\""+esc(r.id)+"\" type=\"button\">Delete</button></td></tr>";
+  }).join("") : '<tr><td colspan="9" class="muted">No trips logged for '+uiYear+' yet.</td></tr>';
+  $("tripTotalMiles").textContent = fmtMi(t.totalMiles);
+  $("tripTotalDed").textContent = fmt(t.deduction);
+  $("tripTotalReimb").textContent = fmt(t.claimable);
+}
+function renderDeductions(t){
+  $("dedRate").textContent = fmt(rateForYear(uiYear));
+  $("dedMiles").textContent = fmtMi(t.dedMiles);
+  $("dedValue").textContent = fmt(t.deduction);
+  $("dedNonMiles").textContent = fmtMi(t.nonMiles);
+  $("dedMonths").innerHTML = t.byMonth.map(function(mo,i){
+    return "<tr><td>"+MONTHS[i]+"</td><td class=\"num\">"+mo.trips+"</td><td class=\"num\">"+fmtMi(mo.miles)+"</td><td class=\"num\">"+fmtMi(mo.dedMiles)+"</td><td class=\"num\">"+fmt(mo.deduction)+"</td></tr>";
+  }).join("");
+  $("dedQuarters").innerHTML = t.byQuarter.map(function(q,i){
+    return "<tr><td>Q"+(i+1)+"</td><td class=\"num\">"+fmtMi(q.dedMiles)+"</td><td class=\"num\">"+fmt(q.deduction)+"</td></tr>";
+  }).join("");
+}
+function mpgForFillup(f){
+  var iv = fuelIntervals(f.vehicleId);
+  for(var i=0;i<iv.length;i++){ if(iv[i].fillupId===f.id) return iv[i]; }
+  return null;
+}
+function renderFuel(){
+  fillVehicleSelect($("fuelVehicle"));
+  fillVehicleSelect($("estVehicle"));
+  var list = sortByDate(state.fillups.filter(function(f){ return yearOf(f.date)===uiYear; })).reverse();
+  $("fuelList").innerHTML = list.length ? list.map(function(f){
+    var iv = mpgForFillup(f);
+    return "<tr><td>"+esc(f.date)+"</td><td>"+esc(vehicleName(f.vehicleId))+(f.demo?' <span class="flag">sample</span>':"")+"</td><td class=\"num\">"+fmtMi(f.odometer)+"</td><td class=\"num\">"+f.gallons+"</td><td class=\"num\">"+fmt(f.pricePerGallon)+"</td><td class=\"num\">"+fmt(f.total)+"</td><td class=\"num\">"+(iv? iv.mpg.toFixed(1) : '<span class="muted">baseline</span>')+"</td><td><button class=\"btn small ghost\" data-edit-fuel=\""+esc(f.id)+"\" type=\"button\">Edit</button> <button class=\"btn small ghost\" data-del-fuel=\""+esc(f.id)+"\" type=\"button\">Delete</button></td></tr>";
+  }).join("") : '<tr><td colspan="8" class="muted">No fill-ups logged for '+uiYear+' yet.</td></tr>';
+  $("fuelStats").innerHTML = state.vehicles.length ? state.vehicles.map(function(v){
+    var s = fuelStats(v.id, uiYear);
+    return "<tr><td>"+esc(v.name)+"</td><td class=\"num\">"+fmtMi(s.miles)+"</td><td class=\"num\">"+s.gallons+"</td><td class=\"num\">"+(s.mpg? s.mpg.toFixed(1) : "—")+"</td><td class=\"num\">"+fmt(s.cost)+"</td><td class=\"num\">"+(s.costPerMile? fmt(s.costPerMile) : "—")+"</td></tr>";
+  }).join("") : '<tr><td colspan="6" class="muted">No vehicles yet.</td></tr>';
+  if(!$("estGasPrice").value) $("estGasPrice").value = state.settings.gasPrice;
+}
+function renderReimb(t){
+  $("reimbRate").textContent = fmt(state.settings.reimbursementRate);
+  $("reimbMiles").textContent = fmtMi(t.claimMiles);
+  $("reimbClaimed").textContent = fmt(t.claimedAmt);
+  $("reimbUnclaimed").textContent = fmt(t.unclaimedAmt);
+  var list = sortByDate(state.trips.filter(function(r){ return yearOf(r.date)===uiYear && isDeductible(r); }));
+  $("reimbList").innerHTML = list.length ? list.map(function(r){
+    return "<tr><td>"+esc(r.date)+"</td><td>"+esc(vehicleName(r.vehicleId))+"</td><td>"+esc(r.from)+" → "+esc(r.to)+"</td><td>"+esc(r.purpose)+"</td><td class=\"num\">"+fmtMi(r.miles)+"</td><td class=\"num\">"+fmt(tripClaimable(r))+"</td><td>"+(r.claimed? '<span class="flag">Claimed</span>' : '<span class="flag due">Unclaimed</span>')+"</td><td><button class=\"btn small ghost\" data-claim-toggle=\""+esc(r.id)+"\" type=\"button\">"+(r.claimed? "Mark unclaimed" : "Mark claimed")+"</button></td></tr>";
+  }).join("") : '<tr><td colspan="8" class="muted">No claimable trips in '+uiYear+' yet.</td></tr>';
+}
+function renderSettings(){
+  if(document.activeElement && ["setDriver","setEmployer","setReimbRate","setGasPrice","setMilFallback"].indexOf(document.activeElement.id)>=0) return;
+  $("setDriver").value = state.settings.driverName;
+  $("setEmployer").value = state.settings.employer;
+  $("setReimbRate").value = state.settings.reimbursementRate;
+  $("setGasPrice").value = state.settings.gasPrice;
+  $("setMilFallback").value = state.settings.mileageFallback;
+  var years = {};
+  Object.keys(state.settings.mileageRates).forEach(function(k){ years[k]=true; });
+  state.trips.forEach(function(r){ var y=yearOf(r.date); if(y) years[y]=true; });
+  years[uiYear]=true;
+  $("milRates").innerHTML = Object.keys(years).sort().map(function(y){
+    return '<div class="rowflex" style="margin-bottom:6px"><label style="margin:0;min-width:130px" for="mr-'+y+'">'+y+' rate ($/mile)</label><input inputmode="decimal" type="number" step="0.001" min="0" id="mr-'+y+'" data-rate-year="'+y+'" value="'+rateForYear(+y)+'" style="max-width:140px"></div>';
+  }).join("");
+  $("vehList").innerHTML = state.vehicles.length ? state.vehicles.map(function(v){
+    var vt = state.trips.filter(function(r){ return r.vehicleId===v.id; });
+    var vm = 0; vt.forEach(function(r){ vm = round1(vm + r.miles); });
+    return "<tr><td>"+esc(v.name)+(v.demo?' <span class="flag">sample</span>':"")+"</td><td>"+esc(v.notes)+"</td><td class=\"num\">"+vt.length+"</td><td class=\"num\">"+fmtMi(vm)+"</td><td><button class=\"btn small ghost\" data-edit-veh=\""+esc(v.id)+"\" type=\"button\">Edit</button> <button class=\"btn small ghost\" data-del-veh=\""+esc(v.id)+"\" type=\"button\">Delete</button></td></tr>";
+  }).join("") : '<tr><td colspan="5" class="muted">No vehicles yet — add your first one above.</td></tr>';
+  fillVehicleSelect($("tripVehicle"));
+  fillVehicleSelect($("fuelVehicle"));
+  fillVehicleSelect($("estVehicle"));
+}
+
+/* ---------- print ---------- */
+function printHTML(title, bodyHTML){
+  $("printSheet").innerHTML = "<h1>"+esc(title)+"</h1>"
+    + "<p>"+esc(state.settings.driverName||"")+(state.settings.employer? " — "+esc(state.settings.employer):"")+" · Year "+uiYear+" · Generated "+esc(todayStr())+"</p>"
+    + bodyHTML
+    + '<p style="margin-top:14px;font-size:11.5px">Prepared with MileLedger from the driver\'s own manual log. Planning and record-keeping aid — not tax advice. Verify rates and rules with a tax professional.</p>';
+  window.print();
+}
+function printDeduction(){
+  var list = sortByDate(state.trips.filter(function(r){ return yearOf(r.date)===uiYear && isDeductible(r); }));
+  var rows = list.map(function(r){
+    return "<tr><td>"+esc(r.date)+"</td><td>"+esc(r.to)+"</td><td>"+esc(r.purpose)+(r.type==="commute" && r.commuteOverride ? " (commute — override)" : "")+"</td><td>"+esc(vehicleName(r.vehicleId))+"</td><td class=\"num\">"+fmtMi(r.miles)+"</td><td class=\"num\">"+fmt(tripDeduction(r))+"</td></tr>";
+  }).join("");
+  var t = totalsForYear(uiYear);
+  printHTML("Mileage Log — "+uiYear+" (standard mileage rate "+fmt(rateForYear(uiYear))+"/mi)",
+    "<table><thead><tr><th>Date</th><th>Destination</th><th>Business purpose</th><th>Vehicle</th><th class=\"num\">Miles</th><th class=\"num\">Deduction</th></tr></thead><tbody>"+rows+"</tbody>"
+    + "<tfoot><tr><td colspan=\"4\"><b>Total deductible miles / deduction</b></td><td class=\"num\"><b>"+fmtMi(t.dedMiles)+"</b></td><td class=\"num\"><b>"+fmt(t.deduction)+"</b></td></tr></tfoot></table>"
+    + "<p>Total miles logged (all types): "+fmtMi(t.totalMiles)+" · Non-deductible miles: "+fmtMi(t.nonMiles)+"</p>");
+}
+function printReimbursement(){
+  var list = sortByDate(state.trips.filter(function(r){ return yearOf(r.date)===uiYear && isDeductible(r) && !r.claimed; }));
+  var rows = list.map(function(r){
+    return "<tr><td>"+esc(r.date)+"</td><td>"+esc(r.from)+" → "+esc(r.to)+"</td><td>"+esc(r.purpose)+"</td><td class=\"num\">"+fmtMi(r.miles)+"</td><td class=\"num\">"+fmt(tripClaimable(r))+"</td></tr>";
+  }).join("");
+  var t = totalsForYear(uiYear);
+  printHTML("Mileage Reimbursement Claim — "+uiYear,
+    "<p>Employee: "+esc(state.settings.driverName||"")+" · Employer: "+esc(state.settings.employer||"")+" · Rate: "+fmt(state.settings.reimbursementRate)+"/mi · Period: "+uiYear+" (unclaimed trips)</p>"
+    + "<table><thead><tr><th>Date</th><th>Route</th><th>Business purpose</th><th class=\"num\">Miles</th><th class=\"num\">Amount</th></tr></thead><tbody>"+rows+"</tbody>"
+    + "<tfoot><tr><td colspan=\"3\"><b>Total unclaimed</b></td><td class=\"num\"><b>"+fmtMi(list.reduce(function(a,r){return round1(a+r.miles);},0))+"</b></td><td class=\"num\"><b>"+fmt(t.unclaimedAmt)+"</b></td></tr></tfoot></table>");
+}
+
+/* ---------- events ---------- */
+function setMsg(id, text, ok){ var el=$(id); if(!el) return; el.textContent = text||""; el.className = "msg "+(text?(ok?"ok":"err"):""); }
+function updateMethodFields(){
+  var m = $("tripMethod").value;
+  Array.prototype.forEach.call(document.querySelectorAll(".odoField"), function(el){ el.style.display = m==="odometer" ? "" : "none"; });
+  Array.prototype.forEach.call(document.querySelectorAll(".directField"), function(el){ el.style.display = m==="direct" ? "" : "none"; });
+}
+function updateFuelPreview(){
+  var total = round2(amt($("fuelGallons").value) * amt($("fuelPrice").value));
+  $("fuelTotalPreview").textContent = fmt(total);
+}
+function clearDemo(){
+  var usedByUser = {};
+  state.trips.concat(state.fillups).forEach(function(r){ if(!r.demo) usedByUser[r.vehicleId]=true; });
+  state.trips = state.trips.filter(function(r){ return !r.demo; });
+  state.fillups = state.fillups.filter(function(r){ return !r.demo; });
+  state.vehicles = state.vehicles.filter(function(v){
+    if(!v.demo) return true;
+    if(usedByUser[v.id]){ v.demo = false; return true; }
+    return false;
+  });
+  state.meta.demoCleared = true;
+  save(); render();
+}
+function init(){
+  load();
+  var editTripId = null, editFuelId = null, editVehId = null;
+  function resetTripEdit(){ editTripId = null; $("tripFormTitle").textContent = "Add a trip"; $("tripAdd").textContent = "Add trip"; $("tripCancelEdit").style.display = "none"; }
+  function clearTripFields(){ $("tripFrom").value=""; $("tripTo").value=""; $("tripPurpose").value=""; $("tripTag").value=""; $("odoStart").value=""; $("odoEnd").value=""; $("milesDirect").value=""; $("tripRound").checked=false; $("tripOverride").checked=false; $("tripClaimed").checked=false; }
+  function loadTripEdit(r){
+    editTripId = r.id;
+    $("tripDate").value = r.date; fillVehicleSelect($("tripVehicle"), r.vehicleId); $("tripVehicle").value = r.vehicleId;
+    $("tripType").value = r.type; $("tripFrom").value = r.from; $("tripTo").value = r.to; $("tripPurpose").value = r.purpose; $("tripTag").value = r.tag || "";
+    $("tripMethod").value = r.entryMethod; updateMethodFields();
+    if(r.entryMethod === "odometer"){ $("odoStart").value = r.odoStart || ""; $("odoEnd").value = r.odoEnd || ""; $("milesDirect").value = ""; }
+    else { $("milesDirect").value = r.roundTrip ? round1(r.miles / 2) : r.miles; $("odoStart").value = ""; $("odoEnd").value = ""; }
+    $("tripRound").checked = !!r.roundTrip; $("tripOverride").checked = !!r.commuteOverride; $("tripClaimed").checked = !!r.claimed;
+    $("tripFormTitle").textContent = "Edit trip"; $("tripAdd").textContent = "Save changes"; $("tripCancelEdit").style.display = "";
+    showTab("trips"); if(window.scrollTo) window.scrollTo(0,0);
+    setMsg("tripMsg", "Editing the trip on " + r.date + " \u2014 change the fields and tap Save changes, or Cancel edit.", true);
+  }
+  function resetFuelEdit(){ editFuelId = null; $("fuelFormTitle").textContent = "Add a fill-up"; $("fuelAdd").textContent = "Add fill-up"; $("fuelCancelEdit").style.display = "none"; }
+  function loadFuelEdit(f){
+    editFuelId = f.id;
+    $("fuelDate").value = f.date; fillVehicleSelect($("fuelVehicle"), f.vehicleId); $("fuelVehicle").value = f.vehicleId;
+    $("fuelOdo").value = f.odometer; $("fuelGallons").value = f.gallons; $("fuelPrice").value = f.pricePerGallon; updateFuelPreview();
+    $("fuelFormTitle").textContent = "Edit fill-up"; $("fuelAdd").textContent = "Save changes"; $("fuelCancelEdit").style.display = "";
+    showTab("fuel"); if(window.scrollTo) window.scrollTo(0,0);
+    setMsg("fuelMsg", "Editing the fill-up on " + f.date + " \u2014 change the fields and tap Save changes, or Cancel edit.", true);
+  }
+  function resetVehEdit(){ editVehId = null; $("vehAdd").textContent = "Add vehicle"; $("vehCancelEdit").style.display = "none"; }
+  function loadVehEdit(v){
+    editVehId = v.id;
+    $("vehName").value = v.name; $("vehNotes").value = v.notes || "";
+    $("vehAdd").textContent = "Save changes"; $("vehCancelEdit").style.display = "";
+    showTab("settings"); if(window.scrollTo) window.scrollTo(0,0);
+    setMsg("vehMsg", "Editing vehicle \"" + v.name + "\" \u2014 change the fields and tap Save changes, or Cancel edit.", true);
+  }
+  var today = todayStr();
+  ["tripDate","fuelDate"].forEach(function(id){ $(id).value = today; });
+  $("tabBar").addEventListener("click", function(e){ var b = e.target.closest("button[data-tab]"); if(b) showTab(b.getAttribute("data-tab")); });
+  $("yearSel").addEventListener("change", function(){ uiYear = +this.value; render(); });
+  $("tripMethod").addEventListener("change", updateMethodFields);
+  ["fuelGallons","fuelPrice"].forEach(function(id){ $(id).addEventListener("input", updateFuelPreview); });
+  $("estVehicle").addEventListener("change", function(){
+    var s = fuelStats(this.value, null);
+    if(s.mpg) $("estMpg").value = s.mpg.toFixed(1);
+  });
+  render();
+  updateMethodFields();
+  /* trips */
+  $("tripForm").addEventListener("submit", function(e){
+    e.preventDefault();
+    var date=$("tripDate").value, veh=$("tripVehicle").value, type=$("tripType").value;
+    var from=$("tripFrom").value.trim(), to=$("tripTo").value.trim(), purpose=$("tripPurpose").value.trim();
+    if(!validDate(date)) return setMsg("tripMsg","Pick a valid date.");
+    if(!veh) return setMsg("tripMsg","Add a vehicle in Settings first.");
+    if(!from || !to) return setMsg("tripMsg","Enter where you drove from and to — the destination belongs in the log.");
+    if(!purpose) return setMsg("tripMsg","Business purpose is required — it is the field the IRS asks for.");
+    var method=$("tripMethod").value, miles=0, o1=0, o2=0;
+    if(method==="odometer"){
+      o1 = num($("odoStart").value); o2 = num($("odoEnd").value);
+      if(!(o2>o1)) return setMsg("tripMsg","Odometer end must be greater than odometer start.");
+      miles = o2 - o1;
+    } else {
+      miles = num($("milesDirect").value);
+      if(!(miles>0)) return setMsg("tripMsg","Enter miles greater than 0.");
+    }
+    if($("tripRound").checked) miles = miles*2;
+    miles = round1(miles);
+    if(!(miles>0) || !isFinite(miles)) return setMsg("tripMsg","Those miles do not compute — check the numbers.");
+    var rec = {date:date, vehicleId:veh, from:from.slice(0,160), to:to.slice(0,160), purpose:purpose.slice(0,300), type:type, entryMethod:method, miles:miles, odoStart:amt(o1), odoEnd:amt(o2), roundTrip:$("tripRound").checked, commuteOverride:$("tripOverride").checked, claimed:$("tripClaimed").checked, tag:$("tripTag").value.trim().slice(0,120)};
+    var wasEdit = false;
+    if(editTripId){ for(var ei=0; ei<state.trips.length; ei++){ if(state.trips[ei].id===editTripId){ rec.id = editTripId; rec.demo = state.trips[ei].demo; state.trips[ei] = rec; wasEdit = true; break; } } }
+    if(!wasEdit){ rec.id = uid(); rec.demo = false; state.trips.push(rec); }
+    uiYear = yearOf(date); save(); render();
+    clearTripFields(); resetTripEdit();
+    setMsg("tripMsg",(wasEdit?"Trip updated \u2014 ":"Trip added \u2014 ")+fmtMi(miles)+" miles.", true);
+  });
+  /* fuel */
+  $("fuelForm").addEventListener("submit", function(e){
+    e.preventDefault();
+    var date=$("fuelDate").value, veh=$("fuelVehicle").value;
+    var odo=num($("fuelOdo").value), gal=num($("fuelGallons").value), price=num($("fuelPrice").value);
+    if(!validDate(date)) return setMsg("fuelMsg","Pick a valid date.");
+    if(!veh) return setMsg("fuelMsg","Add a vehicle in Settings first.");
+    if(!(odo>=0)) return setMsg("fuelMsg","Enter the odometer reading.");
+    if(!(gal>0)) return setMsg("fuelMsg","Enter gallons greater than 0.");
+    if(!(price>=0)) return setMsg("fuelMsg","Enter the price per gallon.");
+    var frec = {date:date, vehicleId:veh, odometer:odo, gallons:gal, pricePerGallon:price, total:round2(gal*price)};
+    var fWasEdit = false;
+    if(editFuelId){ for(var fi=0; fi<state.fillups.length; fi++){ if(state.fillups[fi].id===editFuelId){ frec.id = editFuelId; frec.demo = state.fillups[fi].demo; state.fillups[fi] = frec; fWasEdit = true; break; } } }
+    if(!fWasEdit){ frec.id = uid(); frec.demo = false; state.fillups.push(frec); }
+    uiYear = yearOf(date); save(); render();
+    $("fuelOdo").value=""; $("fuelGallons").value=""; $("fuelPrice").value=""; updateFuelPreview(); resetFuelEdit();
+    setMsg("fuelMsg", fWasEdit ? "Fill-up updated." : "Fill-up added.", true);
+  });
+  /* estimator */
+  $("estForm").addEventListener("submit", function(e){
+    e.preventDefault();
+    var miles=num($("estMiles").value), mpg=num($("estMpg").value), price=num($("estGasPrice").value);
+    if(!(miles>0)) return setMsg("estMsg","Enter the trip miles.");
+    if(!(mpg>0)) return setMsg("estMsg","Enter an MPG — pick a vehicle with fill-ups, or type your car's MPG.");
+    if(!(price>=0)) return setMsg("estMsg","Enter the gas price.");
+    var cost = estimatorCost(miles, mpg, price);
+    $("estResult").textContent = "That trip costs about " + fmt(cost) + " in gas (" + fmtMi(miles) + " mi ÷ " + mpg + " MPG × " + fmt(price) + "/gal).";
+    setMsg("estMsg","", true);
+  });
+  /* deductions print */
+  $("btnPrintDed").addEventListener("click", function(){ printDeduction(); });
+  /* reimbursement actions */
+  $("btnPrintClaim").addEventListener("click", function(){ printReimbursement(); });
+  $("btnMarkClaimed").addEventListener("click", function(){
+    var n=0;
+    state.trips.forEach(function(r){ if(yearOf(r.date)===uiYear && isDeductible(r) && !r.claimed){ r.claimed=true; n++; } });
+    save(); render();
+    setMsg("reimbMsg", n? ("Marked "+n+" trip(s) as claimed.") : "Nothing unclaimed for this year.", true);
+  });
+  /* settings */
+  $("setForm").addEventListener("submit", function(e){
+    e.preventDefault();
+    state.settings.driverName = $("setDriver").value.trim().slice(0,120);
+    state.settings.employer = $("setEmployer").value.trim().slice(0,120);
+    state.settings.reimbursementRate = Math.max(0, num($("setReimbRate").value));
+    state.settings.gasPrice = Math.max(0, num($("setGasPrice").value));
+    state.settings.mileageFallback = Math.max(0, num($("setMilFallback").value));
+    Array.prototype.forEach.call(document.querySelectorAll("[data-rate-year]"), function(inp){
+      var y = inp.getAttribute("data-rate-year");
+      var v = parseFloat(inp.value);
+      if(isFinite(v) && v>=0) state.settings.mileageRates[y] = v;
+    });
+    save(); render();
+    setMsg("setMsg","Settings saved.", true);
+  });
+  /* vehicles */
+  $("vehForm").addEventListener("submit", function(e){
+    e.preventDefault();
+    var name=$("vehName").value.trim();
+    if(!name) return setMsg("vehMsg","Enter a vehicle name.");
+    var vWasEdit = false;
+    if(editVehId){ for(var vi=0; vi<state.vehicles.length; vi++){ if(state.vehicles[vi].id===editVehId){ state.vehicles[vi].name = name.slice(0,120); state.vehicles[vi].notes = $("vehNotes").value.trim().slice(0,200); vWasEdit = true; break; } } }
+    if(!vWasEdit) state.vehicles.push({id:uid(), name:name.slice(0,120), notes:$("vehNotes").value.trim().slice(0,200), demo:false});
+    save(); render();
+    $("vehName").value=""; $("vehNotes").value=""; resetVehEdit();
+    setMsg("vehMsg", vWasEdit ? "Vehicle updated." : "Vehicle added.", true);
+  });
+  $("tripCancelEdit").addEventListener("click", function(){ resetTripEdit(); clearTripFields(); setMsg("tripMsg","Edit cancelled \u2014 nothing was changed.", true); });
+  $("fuelCancelEdit").addEventListener("click", function(){ resetFuelEdit(); $("fuelOdo").value=""; $("fuelGallons").value=""; $("fuelPrice").value=""; updateFuelPreview(); setMsg("fuelMsg","Edit cancelled \u2014 nothing was changed.", true); });
+  $("vehCancelEdit").addEventListener("click", function(){ resetVehEdit(); $("vehName").value=""; $("vehNotes").value=""; setMsg("vehMsg","Edit cancelled \u2014 nothing was changed.", true); });
+  /* backup */
+  $("btnExport").addEventListener("click", function(){
+    var blob = new Blob([JSON.stringify(state, null, 2)], {type:"application/json"});
+    var a = document.createElement("a");
+    try{
+      a.href = URL.createObjectURL(blob);
+      a.download = "mileledger-backup.json";
+      document.body.appendChild(a); a.click(); a.remove();
+    }catch(e){}
+  });
+  function doImport(text, msgId){
+    var parsed = null;
+    try{ parsed = JSON.parse(text); }catch(e){ return setMsg(msgId,"That file is not valid JSON — nothing was imported."); }
+    if(!parsed || parsed.app!=="mileledger"){ return setMsg(msgId,"That is not a MileLedger backup — nothing was imported."); }
+    var clean = sanitizeState(parsed);
+    if(!clean){ return setMsg(msgId,"That backup could not be read — nothing was imported."); }
+    state = clean;
+    uiYear = new Date().getFullYear();
+    save(); render();
+    setMsg(msgId,"Backup imported.", true);
+  }
+  $("btnImportText").addEventListener("click", function(){ doImport($("importText").value, "importMsg"); });
+  $("importFile").addEventListener("change", function(){
+    var f = this.files && this.files[0];
+    if(!f) return;
+    var reader = new FileReader();
+    reader.onload = function(){ doImport(String(reader.result||""), "importMsg"); };
+    reader.readAsText(f);
+    this.value = "";
+  });
+  /* clear / erase */
+  $("btnClearDemo").addEventListener("click", function(){ clearDemo(); setMsg("dataMsg","Sample data cleared — your entries were kept.", true); });
+  $("btnClearDemoDash").addEventListener("click", function(){ clearDemo(); setMsg("dashMsg","Sample data cleared — your entries were kept.", true); });
+  $("btnEraseAll").addEventListener("click", function(){
+    if(!confirm("Erase EVERYTHING \u2014 all trips, fill-ups, vehicles, and settings? This cannot be undone.")) return;
+    state = blankState(true);
+    save(); render();
+    setMsg("dataMsg","Everything erased. Add a vehicle above to start fresh.", true);
+  });
+  /* deletes + claim toggles (event delegation) */
+  document.addEventListener("click", function(e){
+    var et = e.target.closest("[data-edit-trip]");
+    if(et){ var eid = et.getAttribute("data-edit-trip"); for(var a=0;a<state.trips.length;a++) if(state.trips[a].id===eid) loadTripEdit(state.trips[a]); return; }
+    var ef = e.target.closest("[data-edit-fuel]");
+    if(ef){ var fid = ef.getAttribute("data-edit-fuel"); for(var b=0;b<state.fillups.length;b++) if(state.fillups[b].id===fid) loadFuelEdit(state.fillups[b]); return; }
+    var ev = e.target.closest("[data-edit-veh]");
+    if(ev){ var veid = ev.getAttribute("data-edit-veh"); for(var c=0;c<state.vehicles.length;c++) if(state.vehicles[c].id===veid) loadVehEdit(state.vehicles[c]); return; }
+    var dt = e.target.closest("[data-del-trip]");
+    if(dt){
+      var tid = dt.getAttribute("data-del-trip"); var tr = null;
+      state.trips.forEach(function(r){ if(r.id===tid) tr = r; });
+      if(!confirm("Delete the trip on "+(tr?tr.date:"this date")+(tr?(" ("+tr.from+" \u2192 "+tr.to+", "+fmtMi(tr.miles)+" mi)"):"")+"? This cannot be undone.")) return;
+      state.trips = state.trips.filter(function(r){ return r.id!==tid; });
+      if(editTripId===tid) resetTripEdit();
+      save(); render(); return;
+    }
+    var df = e.target.closest("[data-del-fuel]");
+    if(df){
+      var fuid = df.getAttribute("data-del-fuel"); var fu = null;
+      state.fillups.forEach(function(r){ if(r.id===fuid) fu = r; });
+      if(!confirm("Delete the fill-up on "+(fu?fu.date:"this date")+(fu?(" for "+vehicleName(fu.vehicleId)+" ("+fu.gallons+" gal, "+fmt(fu.total)+")"):"")+"? This cannot be undone.")) return;
+      state.fillups = state.fillups.filter(function(r){ return r.id!==fuid; });
+      if(editFuelId===fuid) resetFuelEdit();
+      save(); render(); return;
+    }
+    var dv = e.target.closest("[data-del-veh]");
+    if(dv){
+      var vid = dv.getAttribute("data-del-veh");
+      var used = state.trips.some(function(r){ return r.vehicleId===vid; }) || state.fillups.some(function(r){ return r.vehicleId===vid; });
+      if(used){ setMsg("vehMsg","That vehicle has trips or fill-ups logged \u2014 delete those first, or keep the vehicle."); return; }
+      var vv = null; state.vehicles.forEach(function(v){ if(v.id===vid) vv = v; });
+      if(!confirm("Delete vehicle \""+(vv?vv.name:vid)+"\"? This cannot be undone.")) return;
+      state.vehicles = state.vehicles.filter(function(v){ return v.id!==vid; });
+      if(editVehId===vid) resetVehEdit();
+      save(); render(); return;
+    }
+    var ct = e.target.closest("[data-claim-toggle]");
+    if(ct){
+      var id = ct.getAttribute("data-claim-toggle");
+      state.trips.forEach(function(r){ if(r.id===id) r.claimed = !r.claimed; });
+      save(); render(); return;
+    }
+  });
+}
+init();
+window.ML = { get state(){ return state; }, set state(v){ state=v; }, save:save, load:load, sanitizeState:sanitizeState, totalsForYear:totalsForYear, fuelStats:fuelStats, fuelIntervals:fuelIntervals, estimatorCost:estimatorCost, rateForYear:rateForYear, isDeductible:isDeductible, tripDeduction:tripDeduction, tripClaimable:tripClaimable, round2:round2, round1:round1, fmt:fmt, validDate:validDate, printDeduction:printDeduction, printReimbursement:printReimbursement, KEY:KEY };
+
+/* ================= Legal — Terms of Use acceptance (catalog pattern v1.0) ================= */
+var TERMS_VERSION = "1.0";
+var LEGAL_APP_NAME = "MileLedger";
+var LEGAL_HAS_DISCLAIMER = true;
+var LEGAL_TERMS_HTML = "<h3>Terms of Use \u2014 White Wolf Digital Apps</h3><p><b>Version 1.0 (DRAFT \u2014 pending attorney review)</b></p><p><b>Seller: White Wolf Tree Service LLC, selling digital products under the name \"White Wolf Digital\"</b></p><p><b>Contact: whitewolfoklahoma@gmail.com</b></p><h4>1. What you're buying</h4><p>Our apps (including ForgeFit AI, ForgeKitchen, TreeBid Pro, SnowBid,</p><p>WashPrice Pro, RoofSquares, JobProfit Tracker, PastureLedger, and the other</p><p>titles sold under White Wolf Digital) are single-file software tools. When</p><p>you buy one, you are buying a <b>license to use the file</b>, not ownership of</p><p>the software itself.</p><h4>2. Your license</h4><ul><li>You may use the app for your own personal or business work.</li><li>You may open it on your own devices (phone, tablet, computer) and move your</li></ul><p>  own data between them using the app's built-in backup/export tools.</p><ul><li>You may <b>not</b> resell, redistribute, give away, upload, or share the app</li></ul><p>  file (or a copy of it) with anyone else \u2014 including posting it online,</p><p>  bundling it with other products, or selling access to it.</p><ul><li>You may <b>not</b> claim the app as your own work, remove its branding or</li></ul><p>  notices, or use it to build a competing product for resale.</p><ul><li>One purchase = one buyer. A business purchase covers the buyer and their</li></ul><p>  own employees using it for that business's work; it does not cover other</p><p>  businesses.</p><h4>3. Your data stays yours \u2014 and stays on your device</h4><ul><li>The current versions of our apps run <b>entirely on your device</b>. They have</li></ul><p>  no accounts, no sign-in, no analytics, and they collect, transmit, and store</p><p>  <b>none</b> of your information on any server. We never see your data.</p><ul><li>Your records are stored in your browser/app storage on your device. **You</li></ul><p>  are responsible for backing them up** using the app's export tools. If you</p><p>  clear your browser data, lose your device, or uninstall the app, your</p><p>  records may be permanently lost, and we cannot recover them \u2014 we never had</p><p>  a copy.</p><ul><li>Files you export (backups, quotes, PDFs) are under your control. Where you</li></ul><p>  store or send them is up to you.</p><h4>4. Estimates are tools, not guarantees</h4><p>Every number our apps produce \u2014 bids, prices, costs, calorie targets,</p><p>projections, schedules, totals \u2014 is an **estimate generated from the</p><p>information you enter and the settings you choose**. Outputs are aids for</p><p>your own judgment, not guarantees of price, profit, outcome, or result. You</p><p>are responsible for checking any output before relying on it (see also the</p><p>disclaimer that applies to your app: Health Disclaimer for fitness/nutrition</p><p>apps, Estimator Disclaimer for contractor tools). If an input is wrong, the</p><p>output will be wrong.</p><h4>5. Acceptable use</h4><p>Don't use the apps to break the law, infringe anyone's rights, or</p><p>misrepresent quotes, invoices, or records to your own customers. For the</p><p>fitness apps, the guardrails in the app (healthy-rate limits, calorie floor)</p><p>are part of the product \u2014 don't treat the app as a way around them.</p><h4>6. Provided \"as is\"</h4><p>The apps are provided **\"as is\" and \"as available,\" without warranties of</p><p>any kind**, express or implied \u2014 including merchantability, fitness for a</p><p>particular purpose, accuracy of calculations, and uninterrupted or</p><p>error-free operation \u2014 to the maximum extent allowed by law. Software has</p><p>bugs; browsers change; we work to fix problems but do not promise any app is</p><p>error-free or will work on every device or browser forever.</p><h4>7. Limitation of liability</h4><p>To the maximum extent allowed by law:</p><ul><li>We are **not liable for indirect, incidental, special, or consequential</li></ul><p>  damages** \u2014 including lost profits, lost or mispriced jobs, lost data, or</p><p>  business interruption \u2014 arising from use of the apps.</p><ul><li>Our total liability for any claim connected to an app is limited to the</li></ul><p>  <b>amount you paid for that app</b>.</p><ul><li>Nothing in these terms limits liability that cannot legally be limited.</li></ul><h4>8. Refunds</h4><p>Refunds are handled **by the storefront you bought from, under that</p><p>storefront's policy** \u2014 Gumroad's refund policy for Gumroad purchases, and</p><p>Google Play's refund policy for Play purchases. These terms do not add to,</p><p>replace, or override the storefront's refund rules. If a file is defective</p><p>and won't open, contact us at whitewolfoklahoma@gmail.com and we'll fix or</p><p>replace the file.</p><h4>9. Updates and changes to these terms</h4><ul><li>We may release updated versions of an app. Updates may add, change, or</li></ul><p>  remove features.</p><ul><li>We may update these terms. The version you agreed to is recorded in the</li></ul><p>  app (version number and date) at first-run acceptance. If terms change,</p><p>  the app may ask you to accept the new version once on next open. Updated</p><p>  terms apply going forward, not retroactively.</p><ul><li>If you don't agree to an updated version of the terms, stop using the app.</li></ul><h4>10. Governing law</h4><p>These terms are governed by the laws of the <b>State of Oklahoma</b>, USA.</p><p>(Attorney to confirm governing law and venue before publication.)</p><h4>11. Contact</h4><p>White Wolf Tree Service LLC (White Wolf Digital) \u2014</p><p>whitewolfoklahoma@gmail.com.</p><h4>CONNECTED FEATURES \u2014 takes effect only when these features ship</h4><p>*The sections below apply only to future connected features (device sync via</p><p>Health Connect, AI voice logging, and the AI Goal Preview in ForgeFit). They</p><p>do not apply to the current offline versions, which never transmit data.*</p><ul><li><b>Opt-in only.</b> Connected features are off by default. Each one asks for</li></ul><p>  your separate, explicit consent \u2014 on its own consent screen, in plain</p><p>  language \u2014 before anything leaves your device. Declining never disables</p><p>  the app's offline features.</p><ul><li><b>What gets sent.</b> Only what the consent screen names, only when you use</li></ul><p>  the feature: for example, a meal description (text, or audio only if cloud</p><p>  transcription is on) for AI voice logging, or the single photo you choose</p><p>  for an AI Goal Preview.</p><ul><li><b>No retention by us.</b> Our relay service passes your request to the named</li></ul><p>  AI provider and keeps nothing \u2014 no copies of your photos, audio,</p><p>  transcripts, or entries are stored on our servers. Provider handling is</p><p>  described on the consent screen and in the Privacy Policy.</p><ul><li><b>Health data stays on the device.</b> Device sync (Health Connect) reads</li></ul><p>  your health data on your phone and stores it in the app on your phone. It</p><p>  is not uploaded to us.</p><ul><li><b>Allowances.</b> Some connected features run on third-party AI services we</li></ul><p>  pay for per use, so they may include a monthly allowance described in the</p><p>  app (for example, a set number of AI previews or voice entries per month),</p><p>  with optional additional credits. Allowances and pricing will be shown in</p><p>  the app before you use the feature; they are not a subscription unless the</p><p>  app says so in plain words.</p><ul><li><b>Permissions.</b> Connected features may request device permissions (such</li></ul><p>  as Health Connect access or the microphone) at the moment you first use</p><p>  them. You can revoke permissions any time in your device settings; the</p><p>  related feature will simply stop working.</p>";
+var LEGAL_DISCLAIMER_HTML = "<h3>Estimator Disclaimer \u2014 Contractor &amp; Trade Tools</h3><p>**Applies to: TreeBid Pro, SnowBid, WashPrice Pro, RoofSquares, JobProfit</p><p>Tracker, FieldForms Toolkit, PaintPro, FenceDeck, MarketMaker, and the other</p><p>estimating/pricing tools sold under White Wolf Digital \u2014 including bundles</p><p>that contain them.**</p><h4>Estimating aids, not finished quotes</h4><ul><li>These apps are <b>estimating and record-keeping aids</b>. Every bid, price,</li></ul><p>  cost, measurement, and total they produce is an **estimate based on the</p><p>  information and rates you enter**.</p><ul><li>**You \u2014 the business owner \u2014 are responsible for verifying everything</li></ul><p>  before you quote a customer:** measurements and quantities, site</p><p>  conditions, your current material and labor costs, your rates and margins,</p><p>  taxes, permit and license requirements, disposal rules, and any contract</p><p>  terms.</p><ul><li>Default rates, presets, and sample data included in the apps are starting</li></ul><p>  points only. They are not market prices, not industry standards, and not</p><p>  a recommendation of what you should charge.</p><ul><li>A saved quote keeps the prices in effect when you created it (price</li></ul><p>  snapshot). Changing your presets later does not change saved quotes \u2014</p><p>  and a saved quote is still your responsibility to review before sending.</p><h4>Specific tools</h4><ul><li><b>TreeBid Pro:</b> tree work is dangerous and site-specific. Difficulty</li></ul><p>  factors and presets cannot see the actual tree, lean, rot, targets, or</p><p>  access. Inspect every job in person before final pricing. The \"Invoice</p><p>  with Wave\" feature is an open-and-paste handoff \u2014 TreeBid does not</p><p>  connect to Wave, and the invoice you send from Wave is yours.</p><ul><li><b>RoofSquares / measurement tools:</b> confirm roof measurements and pitch</li></ul><p>  in person or by your usual method before ordering materials.</p><ul><li><b>SnowBid / seasonal tools:</b> route times, snowfall amounts, and service</li></ul><p>  pricing vary by storm and site; seasonal contracts are your agreement</p><p>  with your customer, on your terms.</p><ul><li><b>JobProfit Tracker:</b> profit figures depend on the costs you enter.</li></ul><p>  The app is not accounting or tax software and does not replace your</p><p>  bookkeeper or accountant.</p><h4>Bottom line</h4><p>If an output and your judgment disagree, trust your judgment \u2014 then fix the</p><p>input. We are not responsible for jobs won, lost, or mispriced based on app</p><p>outputs, within the limits of the Terms of Use.</p>";
+(function(){
+  var lst = document.createElement("style");
+  lst.textContent = "@media print{ #legalOverlay{ display:none !important; } }";
+  document.head.appendChild(lst);
+})();
+function sanitizeLegal(v){
+  if(!v || typeof v !== "object") return null;
+  if(typeof v.termsVersion !== "string" || typeof v.acceptedDate !== "string") return null;
+  return { termsVersion: v.termsVersion.slice(0, 10), acceptedDate: v.acceptedDate.slice(0, 40), disclaimerShown: !!v.disclaimerShown };
+}
+function legalRecord(){
+  try{ var s = state; return (s && s.legal) ? sanitizeLegal(s.legal) : null; }catch(e){ return null; }
+}
+function legalVersionCmp(a, b){
+  var pa = String(a).split("."), pb = String(b).split(".");
+  for(var i = 0; i < 3; i++){ var d = (parseInt(pa[i], 10) || 0) - (parseInt(pb[i], 10) || 0); if(d) return d; }
+  return 0;
+}
+function legalAcceptLine(){
+  var rec = legalRecord();
+  if(rec && rec.acceptedDate) return "You agreed to Terms v" + rec.termsVersion + " on " + rec.acceptedDate.slice(0, 10) + ".";
+  return "No Terms acceptance is recorded on this device yet \u2014 the current Terms will be shown for your agreement.";
+}
+function legalSectionHTML(){
+  var h = '<div style="border-top:2px solid rgba(127,127,127,.35);margin-top:20px;padding-top:14px;">'
+    + '<h2>Legal</h2>'
+    + '<p>' + legalAcceptLine() + '</p>'
+    + '<h3>Terms of Use (v' + TERMS_VERSION + ')</h3>'
+    + '<div style="max-height:340px;overflow-y:auto;border:1px solid rgba(127,127,127,.4);border-radius:8px;padding:10px 14px;font-size:14px;line-height:1.55;">' + LEGAL_TERMS_HTML + '</div>';
+  if(LEGAL_HAS_DISCLAIMER){
+    h += '<h3>Estimator Disclaimer</h3>'
+      + '<div style="max-height:260px;overflow-y:auto;border:1px solid rgba(127,127,127,.4);border-radius:8px;padding:10px 14px;font-size:14px;line-height:1.55;">' + LEGAL_DISCLAIMER_HTML + '</div>';
+  }
+  h += '<h3>Privacy</h3>'
+    + '<p>This app collects no data. It has no accounts, no sign-in, no analytics, and no server \u2014 everything you enter is stored only on this device, in this browser\u2019s storage, and nothing is transmitted anywhere. Files you export (backups, quotes, prints) are under your control. You are responsible for backing up your records with the app\u2019s export tools.</p>'
+    + '<p>Sold by White Wolf Tree Service LLC (White Wolf Digital) \u2014 whitewolfoklahoma@gmail.com</p>'
+    + '</div>';
+  return h;
+}
+function legalFillSection(){
+  var el = document.getElementById("legalSection");
+  if(!el) return;
+  var sig = legalAcceptLine();
+  if(el.getAttribute("data-legal-filled") === sig) return;
+  el.innerHTML = legalSectionHTML(); el.setAttribute("data-legal-filled", sig);
+}
+function legalRefreshSection(){
+  var el = document.getElementById("legalSection");
+  if(el){ el.innerHTML = legalSectionHTML(); el.setAttribute("data-legal-filled", legalAcceptLine()); }
+}
+function legalShowOverlay(isUpdate){
+  if(document.getElementById("legalOverlay")) return;
+  var ov = document.createElement("div");
+  ov.id = "legalOverlay";
+  ov.setAttribute("style", "position:fixed;inset:0;z-index:99999;background:rgba(8,10,14,.74);overflow-y:auto;padding:20px 12px;display:flex;align-items:flex-start;justify-content:center;");
+  var discBtn = LEGAL_HAS_DISCLAIMER ? '<button type="button" id="legalReadDisc" style="min-height:44px;padding:10px 14px;border-radius:10px;border:1px solid #9aa4b2;background:#ffffff;color:#1c2733;font-size:15px;cursor:pointer;">Read the Estimator Disclaimer</button>' : '';
+  var checkLabel = LEGAL_HAS_DISCLAIMER ? "I have read the disclaimer and I agree to the Terms of Use" : "I have read and I agree to the Terms of Use";
+  ov.innerHTML = '<div style="background:#ffffff;color:#1c2733;max-width:560px;width:100%;border-radius:14px;padding:22px 20px;box-shadow:0 18px 50px rgba(0,0,0,.45);font-size:15px;line-height:1.55;">'
+    + '<h2 style="margin:0 0 6px;font-size:21px;">' + LEGAL_APP_NAME + ' \u2014 Terms of Use</h2>'
+    + (isUpdate ? '<p style="background:#fdf3d7;border:1px solid #e4cf8a;border-radius:8px;padding:8px 10px;"><b>Our terms were updated (v' + TERMS_VERSION + ').</b></p>' : '')
+    + '<p style="font-size:16px;"><b>Your data stays on your device.</b><br><b>Estimates are aids, not guarantees.</b><br><b>You\'re responsible for checking outputs before you rely on them.</b></p>'
+    + '<p>The full Terms' + (LEGAL_HAS_DISCLAIMER ? ' and Disclaimer are' : ' are') + ' one tap away, now and any time in Settings \u2192 Legal.</p>'
+    + '<div id="legalReader" style="display:none;max-height:44vh;overflow-y:auto;border:1px solid #d5dbe3;border-radius:10px;padding:10px 14px;margin:10px 0;font-size:14px;"></div>'
+    + '<p style="display:flex;gap:8px;flex-wrap:wrap;"><button type="button" id="legalReadTerms" style="min-height:44px;padding:10px 14px;border-radius:10px;border:1px solid #9aa4b2;background:#ffffff;color:#1c2733;font-size:15px;cursor:pointer;">Read the full Terms</button>' + discBtn + '</p>'
+    + '<label style="display:flex;gap:10px;align-items:flex-start;margin:12px 0;cursor:pointer;"><input type="checkbox" id="legalCheck" style="width:22px;height:22px;min-width:22px;margin-top:1px;cursor:pointer;"><span>' + checkLabel + '</span></label>'
+    + '<button type="button" id="legalAgree" disabled style="min-height:52px;width:100%;border:0;border-radius:10px;background:#1f5fa8;color:#ffffff;font-size:17px;font-weight:700;cursor:pointer;opacity:.55;">I Agree</button>'
+    + '<p style="font-size:13px;color:#5a6675;margin-bottom:0;">Your records stay loaded behind this screen and are never deleted or locked, whether or not you agree now.</p>'
+    + '</div>';
+  document.body.appendChild(ov);
+  var reader = ov.querySelector("#legalReader");
+  var showing = "";
+  function toggleReader(kind){
+    if(showing === kind){ reader.style.display = "none"; showing = ""; return; }
+    reader.innerHTML = kind === "terms" ? LEGAL_TERMS_HTML : LEGAL_DISCLAIMER_HTML;
+    reader.style.display = "block"; showing = kind;
+    reader.scrollTop = 0;
+  }
+  ov.querySelector("#legalReadTerms").addEventListener("click", function(){ toggleReader("terms"); });
+  var db = ov.querySelector("#legalReadDisc");
+  if(db) db.addEventListener("click", function(){ toggleReader("disc"); });
+  var legalChk = ov.querySelector("#legalCheck");
+  var legalAgreeBtn = ov.querySelector("#legalAgree");
+  legalChk.addEventListener("change", function(){ legalAgreeBtn.disabled = !legalChk.checked; legalAgreeBtn.style.opacity = legalChk.checked ? "1" : ".55"; });
+  legalAgreeBtn.addEventListener("click", function(){
+    if(!legalChk.checked) return;
+    try{ state.legal = { termsVersion: TERMS_VERSION, acceptedDate: new Date().toISOString(), disclaimerShown: LEGAL_HAS_DISCLAIMER }; save(); }catch(e){}
+    if(ov.parentNode) ov.parentNode.removeChild(ov);
+    legalRefreshSection();
+  });
+}
+function legalInit(){
+  legalFillSection();
+  var rec = legalRecord();
+  if(rec && legalVersionCmp(rec.termsVersion, TERMS_VERSION) >= 0) return;
+  legalShowOverlay(!!rec);
+}
+if(typeof MutationObserver !== "undefined"){
+  var legalObs = new MutationObserver(function(){ legalFillSection(); });
+  legalObs.observe(document.documentElement, { childList: true, subtree: true });
+}
+if(document.readyState === "loading") document.addEventListener("DOMContentLoaded", function(){ setTimeout(legalInit, 30); });
+else setTimeout(legalInit, 30);
+
+</script>
+</body>
+</html>
